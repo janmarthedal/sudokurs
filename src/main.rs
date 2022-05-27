@@ -53,7 +53,7 @@ impl Board {
         self.column_masks[c] |= mask;
         self.group_masks[g] |= mask;
     }
-    fn search_solution(&mut self) {
+    fn search_solution(&mut self) -> usize {
         // index, count, mask
         let mut best: Option<(usize, u32, MaskValue)> = None;
         for (index, &v) in self.cells.iter().enumerate() {
@@ -63,8 +63,8 @@ impl Board {
             let (r, c, g) = index_to_row_column_group(index);
             let mask = self.row_masks[r] & self.column_masks[c] & self.group_masks[g];
             if mask == 0 {
-                // no solution
-                return;
+                // no solutions
+                return 1;
             }
             let count = mask_to_count(mask);
             match best {
@@ -77,20 +77,21 @@ impl Board {
             }
         }
         if let Some((index, _, mask)) = best {
-            // println!("Try: {} {} {}", i, c, m);
+            let mut calls = 1;
             for value in 1..=9 {
                 if value_to_mask(value) & mask != 0 {
-                    println!("Set index {} to {}", index, value);
+                    // println!("Set index {} to {}", index, value);
                     self.set_at_index(index, value);
-                    self.search_solution();
-                    println!("Clear index {}", index);
+                    calls += self.search_solution();
+                    // println!("Clear index {}", index);
                     self.clear_at_index(index);
                 }
             }
-        } else {
-            println!("Solution:");
-            self.show();
+            return calls;
         }
+        println!("\nSolution:");
+        self.show();
+        1
     }
     fn show(&self) {
         for (i, &v) in self.cells.iter().enumerate() {
@@ -131,30 +132,21 @@ impl Board {
 }
 
 fn main() {
-    /*let mut board = Board::parse("\
-        5..26..37\
-        .6.4.....\
-        ..43..61.\
-        95867....\
-        1..895746\
-        ....2..9.\
-        ..1.3...2\
-        7.5.41.63\
-        6...8.17.\
-    ");*/
+    // Arto Inkala (https://abcnews.go.com/blogs/headlines/2012/06/can-you-solve-the-hardest-ever-sudoku)
     let mut board = Board::parse("\
-        ....68.3.\
-        19.......\
-        8.31..2..\
-        4...51.6.\
-        7...2...4\
-        ....7.8..\
-        .1...5..7\
-        ..4......\
-        .5..3.1..\
+        8........\
+        ..36.....\
+        .7..9.2..\
+        .5...7...\
+        ....457..\
+        ...1...3.\
+        ..1....68\
+        ..85...1.\
+        .9....4..\
     ");
     board.show();
     board.show_masks();
 
-    board.search_solution();
+    let calls = board.search_solution();
+    println!("\nDifficulty: {}", calls);
 }
