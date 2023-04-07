@@ -12,8 +12,8 @@ impl BitSet {
     pub fn is_empty(&self) -> bool {
         self.bits == 0
     }
-    pub fn count(&self) -> usize {
-        self.bits.count_ones() as usize
+    pub fn count(&self) -> u32 {
+        self.bits.count_ones()
     }
     pub fn contains(&self, value: usize) -> bool {
         self.bits & 1 << value != 0

@@ -7,9 +7,9 @@ type CellValue = usize;
 
 struct Board {
     cells: [CellValue; 81],
-    column_masks: [BitSet; 9],
-    row_masks: [BitSet; 9],
-    group_masks: [BitSet; 9],
+    column_set: [BitSet; 9],
+    row_set: [BitSet; 9],
+    group_set: [BitSet; 9],
 }
 
 fn index_to_row_column_group(index: usize) -> (usize, usize, usize) {
@@ -21,44 +21,44 @@ fn index_to_row_column_group(index: usize) -> (usize, usize, usize) {
 
 impl Board {
     fn new() -> Self {
-        let mut mask = BitSet::new();
+        let mut all = BitSet::new();
         for i in 1..=9 {
-            mask.insert(i);
+            all.insert(i);
         }
         Self {
             cells: [0; 81],
-            column_masks: [mask; 9],
-            row_masks: [mask; 9],
-            group_masks: [mask; 9],
+            column_set: [all; 9],
+            row_set: [all; 9],
+            group_set: [all; 9],
         }
     }
     fn set_at_index(&mut self, index: usize, value: CellValue) {
         self.cells[index] = value;
         let (r, c, g) = index_to_row_column_group(index);
-        debug_assert!(self.row_masks[r].contains(value));
-        debug_assert!(self.column_masks[c].contains(value));
-        debug_assert!(self.group_masks[g].contains(value));
-        self.row_masks[r].remove(value);
-        self.column_masks[c].remove(value);
-        self.group_masks[g].remove(value);
+        debug_assert!(self.row_set[r].contains(value));
+        debug_assert!(self.column_set[c].contains(value));
+        debug_assert!(self.group_set[g].contains(value));
+        self.row_set[r].remove(value);
+        self.column_set[c].remove(value);
+        self.group_set[g].remove(value);
     }
     fn clear_at_index(&mut self, index: usize) {
         let value = self.cells[index];
         self.cells[index] = 0;
         let (r, c, g) = index_to_row_column_group(index);
-        self.row_masks[r].insert(value);
-        self.column_masks[c].insert(value);
-        self.group_masks[g].insert(value);
+        self.row_set[r].insert(value);
+        self.column_set[c].insert(value);
+        self.group_set[g].insert(value);
     }
     fn search_solution(&mut self) -> usize {
         // index, count, mask
-        let mut best: Option<(usize, usize, BitSet)> = None;
+        let mut best: Option<(usize, u32, BitSet)> = None;
         for (index, &v) in self.cells.iter().enumerate() {
             if v != 0 {
                 continue;
             }
             let (r, c, g) = index_to_row_column_group(index);
-            let moves = self.row_masks[r].intersection(self.column_masks[c]).intersection(self.group_masks[g]);
+            let moves = self.row_set[r].intersection(self.column_set[c]).intersection(self.group_set[g]);
             if moves.is_empty() {
                 // no solutions
                 return 1;
@@ -86,9 +86,9 @@ impl Board {
         1
     }
     fn show_masks(&self) {
-        println!("Row masks   : {:?}", self.row_masks);
-        println!("Column masks: {:?}", self.column_masks);
-        println!("Group masks : {:?}", self.group_masks);
+        println!("Row masks   : {:?}", self.row_set);
+        println!("Column masks: {:?}", self.column_set);
+        println!("Group masks : {:?}", self.group_set);
     }
     fn parse(s: &str) -> Board {
         assert_eq!(s.len(), 81);
