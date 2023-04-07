@@ -29,6 +29,42 @@ impl BitSet {
             bits: self.bits & other.bits,
         }
     }
+    pub fn iter(&self) -> Iter {
+        Iter {
+            bits: self.bits,
+            value: 0,
+        }
+    }
+}
+
+pub struct Iter {
+    bits: usize,
+    value: usize,
+}
+
+impl Iterator for Iter {
+    type Item = usize;
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.bits == 0 {
+            return None;
+        }
+        while self.bits & 1 == 0 {
+            self.bits >>= 1;
+            self.value += 1;
+        }
+        let value = self.value;
+        self.bits >>= 1;
+        self.value += 1;
+        return Some(value);
+    }
+}
+
+impl IntoIterator for &BitSet {
+    type Item = usize;
+    type IntoIter = Iter;
+    fn into_iter(self) -> Self::IntoIter {
+        self.iter()
+    }
 }
 
 impl fmt::Debug for BitSet {
@@ -36,15 +72,13 @@ impl fmt::Debug for BitSet {
         use std::fmt::Write;
         f.write_char('{')?;
         let mut first = true;
-        for i in 0..usize::BITS {
-            if self.contains(i as usize) {
-                if first {
-                    first = false;
-                } else {
-                    f.write_char(',')?;
-                }
-                write!(f, "{}", i)?;
+        for i in self {
+            if first {
+                first = false;
+            } else {
+                f.write_char(',')?;
             }
+            write!(f, "{}", i)?;
         }
         f.write_char('}')?;
         Ok(())

@@ -58,29 +58,27 @@ impl Board {
                 continue;
             }
             let (r, c, g) = index_to_row_column_group(index);
-            let legal = self.row_masks[r].intersection(self.column_masks[c]).intersection(self.group_masks[g]);
-            if legal.is_empty() {
+            let moves = self.row_masks[r].intersection(self.column_masks[c]).intersection(self.group_masks[g]);
+            if moves.is_empty() {
                 // no solutions
                 return 1;
             }
-            let count = legal.count();
+            let count = moves.count();
             match best {
                 Some((_, c, _)) => {
                     if count < c {
-                        best = Some((index, count, legal));
+                        best = Some((index, count, moves));
                     }
                 }
-                None => best = Some((index, count, legal)),
+                None => best = Some((index, count, moves)),
             }
         }
         if let Some((index, _, moves)) = best {
             let mut calls = 1;
-            for value in 1..=9 {
-                if moves.contains(value) {
-                    self.set_at_index(index, value);
-                    calls += self.search_solution();
-                    self.clear_at_index(index);
-                }
+            for value in moves.iter() {
+                self.set_at_index(index, value);
+                calls += self.search_solution();
+                self.clear_at_index(index);
             }
             return calls;
         }
