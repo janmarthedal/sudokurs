@@ -1,14 +1,62 @@
 use std::fmt::{self, Write};
 
 type CellValue = usize;
-type MaskValue = usize;
-const FULL_MASK: MaskValue = 511;
+
+#[derive(Clone, Copy)]
+struct BitSet {
+    bits: usize,
+}
+
+impl BitSet {
+    fn new() -> Self {
+        Self { bits: 0 }
+    }
+    fn is_empty(&self) -> bool {
+        self.bits == 0
+    }
+    fn count(&self) -> usize {
+        self.bits.count_ones() as usize
+    }
+    fn contains(&self, value: usize) -> bool {
+        self.bits & 1 << value != 0
+    }
+    fn insert(&mut self, value: usize) {
+        self.bits |= 1 << value;
+    }
+    fn remove(&mut self, value: usize) {
+        self.bits &= !(1 << value);
+    }
+    fn intersection(&self, other: Self) -> Self {
+        Self {
+            bits: self.bits & other.bits,
+        }
+    }
+}
+
+impl fmt::Debug for BitSet {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.write_char('{')?;
+        let mut first = true;
+        for i in 0..usize::BITS {
+            if self.contains(i as usize) {
+                if first {
+                    first = false;
+                } else {
+                    f.write_char(',')?;
+                }
+                write!(f, "{}", i)?;
+            }
+        }
+        f.write_char('}')?;
+        Ok(())
+    }
+}
 
 struct Board {
     cells: [CellValue; 81],
-    column_masks: [MaskValue; 9],
-    row_masks: [MaskValue; 9],
-    group_masks: [MaskValue; 9],
+    column_masks: [BitSet; 9],
+    row_masks: [BitSet; 9],
+    group_masks: [BitSet; 9],
 }
 
 fn index_to_row_column_group(index: usize) -> (usize, usize, usize) {
@@ -18,74 +66,66 @@ fn index_to_row_column_group(index: usize) -> (usize, usize, usize) {
     (row, col, group)
 }
 
-fn value_to_mask(value: CellValue) -> MaskValue {
-    1 << (value - 1)
-}
-
-fn mask_to_count(mask: MaskValue) -> u32 {
-    mask.count_ones()
-}
-
 impl Board {
     fn new() -> Self {
+        let mut mask = BitSet::new();
+        for i in 1..=9 {
+            mask.insert(i);
+        }
         Self {
             cells: [0; 81],
-            column_masks: [FULL_MASK; 9],
-            row_masks: [FULL_MASK; 9],
-            group_masks: [FULL_MASK; 9],
+            column_masks: [mask; 9],
+            row_masks: [mask; 9],
+            group_masks: [mask; 9],
         }
     }
     fn set_at_index(&mut self, index: usize, value: CellValue) {
         self.cells[index] = value;
         let (r, c, g) = index_to_row_column_group(index);
-        let mask = value_to_mask(value);
-        debug_assert!(self.row_masks[r] & mask != 0);
-        debug_assert!(self.column_masks[c] & mask != 0);
-        debug_assert!(self.group_masks[g] & mask != 0);
-        self.row_masks[r] &= !mask;
-        self.column_masks[c] &= !mask;
-        self.group_masks[g] &= !mask;
+        debug_assert!(self.row_masks[r].contains(value));
+        debug_assert!(self.column_masks[c].contains(value));
+        debug_assert!(self.group_masks[g].contains(value));
+        self.row_masks[r].remove(value);
+        self.column_masks[c].remove(value);
+        self.group_masks[g].remove(value);
     }
     fn clear_at_index(&mut self, index: usize) {
         let value = self.cells[index];
         self.cells[index] = 0;
         let (r, c, g) = index_to_row_column_group(index);
-        let mask = value_to_mask(value);
-        self.row_masks[r] |= mask;
-        self.column_masks[c] |= mask;
-        self.group_masks[g] |= mask;
+        self.row_masks[r].insert(value);
+        self.column_masks[c].insert(value);
+        self.group_masks[g].insert(value);
     }
     fn search_solution(&mut self) -> usize {
         // index, count, mask
-        let mut best: Option<(usize, u32, MaskValue)> = None;
+        let mut best: Option<(usize, usize, BitSet)> = None;
         for (index, &v) in self.cells.iter().enumerate() {
             if v != 0 {
                 continue;
             }
             let (r, c, g) = index_to_row_column_group(index);
-            let mask = self.row_masks[r] & self.column_masks[c] & self.group_masks[g];
-            if mask == 0 {
+            let legal = self.row_masks[r].intersection(self.column_masks[c]).intersection(self.group_masks[g]);
+            if legal.is_empty() {
                 // no solutions
                 return 1;
             }
-            let count = mask_to_count(mask);
+            let count = legal.count();
             match best {
                 Some((_, c, _)) => {
                     if count < c {
-                        best = Some((index, count, mask));
+                        best = Some((index, count, legal));
                     }
                 }
-                None => best = Some((index, count, mask))
+                None => best = Some((index, count, legal)),
             }
         }
-        if let Some((index, _, mask)) = best {
+        if let Some((index, _, moves)) = best {
             let mut calls = 1;
             for value in 1..=9 {
-                if value_to_mask(value) & mask != 0 {
-                    // println!("Set index {} to {}", index, value);
+                if moves.contains(value) {
                     self.set_at_index(index, value);
                     calls += self.search_solution();
-                    // println!("Clear index {}", index);
                     self.clear_at_index(index);
                 }
             }
@@ -106,7 +146,7 @@ impl Board {
             match c {
                 '1'..='9' => board.set_at_index(i, c.to_digit(10).unwrap() as usize),
                 '.' => {}
-                _ => panic!("Unexpected char")
+                _ => panic!("Unexpected char"),
             }
         }
         board
@@ -116,13 +156,11 @@ impl Board {
 impl fmt::Display for Board {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         for (i, &v) in self.cells.iter().enumerate() {
-            f.write_char(
-                if v == 0 {
-                    '.'
-                } else {
-                    std::char::from_digit(v as u32, 10).unwrap()
-                }
-            )?;
+            f.write_char(if v == 0 {
+                '.'
+            } else {
+                std::char::from_digit(v as u32, 10).unwrap()
+            })?;
             if i == 80 {
                 // skip
             } else if (i + 1) % 27 == 0 {
@@ -150,7 +188,8 @@ fn main() {
     //     ..85...1.\
     //     .9....4..\
     // ");
-    let mut board = Board::parse("\
+    let mut board = Board::parse(
+        "\
         29.....87\
         ....8....\
         ..527..41\
@@ -160,7 +199,8 @@ fn main() {
         76..384..\
         ....9....\
         31.....98\
-    ");
+    ",
+    );
     println!("{}", board);
     board.show_masks();
 
