@@ -1,3 +1,5 @@
+use std::fmt::{self, Write};
+
 type CellValue = usize;
 type MaskValue = usize;
 const FULL_MASK: MaskValue = 511;
@@ -89,28 +91,8 @@ impl Board {
             }
             return calls;
         }
-        println!("\nSolution:");
-        self.show();
+        println!("\nSolution:\n{self}");
         1
-    }
-    fn show(&self) {
-        for (i, &v) in self.cells.iter().enumerate() {
-            print!(
-                "{}",
-                if v == 0 {
-                    '.'
-                } else {
-                    std::char::from_digit(v as u32, 10).unwrap()
-                }
-            );
-            if (i + 1) % 27 == 0 && i < 80 {
-                print!("\n-----------\n")
-            } else if (i + 1) % 9 == 0 {
-                print!("\n");
-            } else if (i + 1) % 3 == 0 {
-                print!("|");
-            }
-        }
     }
     fn show_masks(&self) {
         println!("Row masks   : {:?}", self.row_masks);
@@ -131,20 +113,55 @@ impl Board {
     }
 }
 
+impl fmt::Display for Board {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        for (i, &v) in self.cells.iter().enumerate() {
+            f.write_char(
+                if v == 0 {
+                    '.'
+                } else {
+                    std::char::from_digit(v as u32, 10).unwrap()
+                }
+            )?;
+            if i == 80 {
+                // skip
+            } else if (i + 1) % 27 == 0 {
+                f.write_str("\n-----------\n")?;
+            } else if (i + 1) % 9 == 0 {
+                f.write_char('\n')?;
+            } else if (i + 1) % 3 == 0 {
+                f.write_char('|')?;
+            }
+        }
+        Ok(())
+    }
+}
+
 fn main() {
     // Arto Inkala (https://abcnews.go.com/blogs/headlines/2012/06/can-you-solve-the-hardest-ever-sudoku)
+    // let mut board = Board::parse("\
+    //     8........\
+    //     ..36.....\
+    //     .7..9.2..\
+    //     .5...7...\
+    //     ....457..\
+    //     ...1...3.\
+    //     ..1....68\
+    //     ..85...1.\
+    //     .9....4..\
+    // ");
     let mut board = Board::parse("\
-        8........\
-        ..36.....\
-        .7..9.2..\
-        .5...7...\
-        ....457..\
-        ...1...3.\
-        ..1....68\
-        ..85...1.\
-        .9....4..\
+        29.....87\
+        ....8....\
+        ..527..41\
+        ...9..1.6\
+        ..1...9..\
+        9.4..6...\
+        76..384..\
+        ....9....\
+        31.....98\
     ");
-    board.show();
+    println!("{}", board);
     board.show_masks();
 
     let calls = board.search_solution();
