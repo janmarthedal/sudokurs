@@ -57,10 +57,7 @@ impl Board {
         self.boards_seen += 1;
         // index, count, mask
         let mut best: Option<(usize, u32, BitSet)> = None;
-        for (index, &v) in self.cells.iter().enumerate() {
-            if v != 0 {
-                continue;
-            }
+        for (index, _) in self.cells.iter().enumerate().filter(|(_, &v)| v == 0) {
             let (r, c, g) = index_to_row_column_group(index);
             let moves = self.row_set[r].intersection(self.column_set[c]).intersection(self.group_set[g]);
             if moves.is_empty() {
@@ -69,9 +66,8 @@ impl Board {
             }
             let count = moves.count();
             match best {
-                Some((_, c, _)) if count < c => best = Some((index, count, moves)),
-                None => best = Some((index, count, moves)),
-                _ => {}
+                Some((_, c, _)) if count >= c => {},
+                _ => best = Some((index, count, moves)),
             }
         }
         if let Some((index, _, moves)) = best {
