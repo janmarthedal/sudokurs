@@ -1,9 +1,9 @@
 mod bitset;
 
 use std::fmt::{self, Write};
-use bitset::BitSet;
 
 type CellValue = usize;
+type BitSet = bitset::BitSet<usize>;
 
 struct Board {
     cells: [CellValue; 81],
@@ -56,15 +56,15 @@ impl Board {
     fn search_solution(&mut self) {
         self.boards_seen += 1;
         // index, count, mask
-        let mut best: Option<(usize, u32, BitSet)> = None;
+        let mut best: Option<(usize, usize, BitSet)> = None;
         for (index, _) in self.cells.iter().enumerate().filter(|(_, &v)| v == 0) {
             let (r, c, g) = index_to_row_column_group(index);
             let moves = self.row_set[r].intersection(self.column_set[c]).intersection(self.group_set[g]);
-            if moves.is_empty() {
+            let count = moves.count();
+            if count == 0 {
                 // no solutions
                 return;
             }
-            let count = moves.count();
             match best {
                 Some((_, c, _)) if count >= c => {},
                 _ => best = Some((index, count, moves)),
