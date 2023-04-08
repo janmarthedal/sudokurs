@@ -32,12 +32,13 @@ impl Board {
             group_set: [all; 9],
         }
     }
+    fn legal_at_index(&self, index: usize, value: CellValue) -> bool {
+        let (r, c, g) = index_to_row_column_group(index);
+        self.row_set[r].contains(value) && self.column_set[c].contains(value) && self.group_set[g].contains(value)
+    }
     fn set_at_index(&mut self, index: usize, value: CellValue) {
         self.cells[index] = value;
         let (r, c, g) = index_to_row_column_group(index);
-        debug_assert!(self.row_set[r].contains(value));
-        debug_assert!(self.column_set[c].contains(value));
-        debug_assert!(self.group_set[g].contains(value));
         self.row_set[r].remove(value);
         self.column_set[c].remove(value);
         self.group_set[g].remove(value);
@@ -90,17 +91,26 @@ impl Board {
         println!("Column masks: {:?}", self.column_set);
         println!("Group masks : {:?}", self.group_set);
     }
-    fn parse(s: &str) -> Board {
-        assert_eq!(s.len(), 81);
+    fn parse(s: &str) -> Result<Board, String> {
+        if s.len() != 81 {
+            return Err(format!("Expected 81 chars, got {}", s.len()));
+        }
         let mut board = Board::new();
-        for (i, c) in s.chars().enumerate() {
-            match c {
-                '1'..='9' => board.set_at_index(i, c.to_digit(10).unwrap() as usize),
-                '.' => {}
-                _ => panic!("Unexpected char"),
+        for (i, chr) in s.chars().enumerate() {
+            match chr {
+                '1'..='9' => {
+                    let value = chr.to_digit(10).unwrap() as usize;
+                    if !board.legal_at_index(i, value) {
+                        let (r, c, _) = index_to_row_column_group(i);
+                        return Err(format!("Illegal value {value} at row {}, column {}", r + 1, c + 1));
+                    }
+                    board.set_at_index(i, value);
+                },
+                '.' | ' ' => {}
+                _ => return Err(format!("Illegal char '{chr}' at index {i}")),
             }
         }
-        board
+        Ok(board)
     }
 }
 
@@ -128,7 +138,7 @@ impl fmt::Display for Board {
 
 fn main() {
     // Arto Inkala (https://abcnews.go.com/blogs/headlines/2012/06/can-you-solve-the-hardest-ever-sudoku)
-    // let mut board = Board::parse("\
+    // let board_setup = "\
     //     8........\
     //     ..36.....\
     //     .7..9.2..\
@@ -138,11 +148,10 @@ fn main() {
     //     ..1....68\
     //     ..85...1.\
     //     .9....4..\
-    // ");
-    let mut board = Board::parse(
-        "\
+    // ";
+    let board_setup = "\
         29.....87\
-        ....8....\
+        2...8....\
         ..527..41\
         ...9..1.6\
         ..1...9..\
@@ -150,8 +159,8 @@ fn main() {
         76..384..\
         ....9....\
         31.....98\
-    ",
-    );
+    ";
+    let mut board = Board::parse(board_setup).expect("Failed to parse");
     println!("{}", board);
     board.show_masks();
 
