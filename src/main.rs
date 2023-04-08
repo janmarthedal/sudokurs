@@ -10,6 +10,7 @@ struct Board {
     column_set: [BitSet; 9],
     row_set: [BitSet; 9],
     group_set: [BitSet; 9],
+    boards_seen: usize,
 }
 
 fn index_to_row_column_group(index: usize) -> (usize, usize, usize) {
@@ -30,6 +31,7 @@ impl Board {
             column_set: [all; 9],
             row_set: [all; 9],
             group_set: [all; 9],
+            boards_seen: 0,
         }
     }
     fn legal_at_index(&self, index: usize, value: CellValue) -> bool {
@@ -51,7 +53,8 @@ impl Board {
         self.column_set[c].insert(value);
         self.group_set[g].insert(value);
     }
-    fn search_solution(&mut self) -> usize {
+    fn search_solution(&mut self) {
+        self.boards_seen += 1;
         // index, count, mask
         let mut best: Option<(usize, u32, BitSet)> = None;
         for (index, &v) in self.cells.iter().enumerate() {
@@ -62,34 +65,32 @@ impl Board {
             let moves = self.row_set[r].intersection(self.column_set[c]).intersection(self.group_set[g]);
             if moves.is_empty() {
                 // no solutions
-                return 1;
+                return;
             }
             let count = moves.count();
             match best {
-                Some((_, c, _)) => {
-                    if count < c {
-                        best = Some((index, count, moves));
-                    }
-                }
+                Some((_, c, _)) if count < c => best = Some((index, count, moves)),
                 None => best = Some((index, count, moves)),
+                _ => {}
             }
         }
         if let Some((index, _, moves)) = best {
-            let mut calls = 1;
             for value in moves.iter() {
                 self.set_at_index(index, value);
-                calls += self.search_solution();
+                self.search_solution();
                 self.clear_at_index(index);
             }
-            return calls;
+        } else {
+            println!("\nSolution:\n{self}");
         }
-        println!("\nSolution:\n{self}");
-        1
     }
     fn show_masks(&self) {
         println!("Row masks   : {:?}", self.row_set);
         println!("Column masks: {:?}", self.column_set);
         println!("Group masks : {:?}", self.group_set);
+    }
+    fn get_boards_seen(&self) -> usize {
+        self.boards_seen
     }
     fn parse(s: &str) -> Result<Board, String> {
         if s.len() != 81 {
@@ -151,7 +152,7 @@ fn main() {
     // ";
     let board_setup = "\
         29.....87\
-        2...8....\
+        ....8....\
         ..527..41\
         ...9..1.6\
         ..1...9..\
@@ -164,6 +165,6 @@ fn main() {
     println!("{}", board);
     board.show_masks();
 
-    let calls = board.search_solution();
-    println!("\nDifficulty: {}", calls);
+    board.search_solution();
+    println!("\nBoards seen: {}", board.get_boards_seen());
 }
