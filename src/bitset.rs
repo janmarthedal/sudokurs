@@ -65,6 +65,12 @@ impl<T: BitStore> BitSet<T> {
     }
 }
 
+impl<T: BitStore> Default for BitSet<T> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 pub struct Iter<T: BitStore> {
     bits: T,
     value: usize,
@@ -83,7 +89,7 @@ impl<T: BitStore> Iterator for Iter<T> {
         let value = self.value;
         self.bits >>= 1;
         self.value += 1;
-        return Some(value);
+        Some(value)
     }
 }
 
