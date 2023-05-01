@@ -1,6 +1,6 @@
 mod bitset;
 
-use std::fmt::{self, Write};
+use std::{fmt::{self, Write}, io::Read};
 
 type CellValue = usize;
 type BitSet = bitset::BitSet<usize>;
@@ -95,24 +95,32 @@ impl Board {
         self.boards_seen
     }
 
-    fn parse(s: &str) -> Result<Board, String> {
-        if s.len() != 81 {
-            return Err(format!("Expected 81 chars, got {}", s.len()));
-        }
+    fn parse<S: Iterator<Item=char>>(s: S) -> Result<Board, String> {
         let mut board = Board::new();
-        for (i, chr) in s.chars().enumerate() {
+        let mut board_idx = 0;
+        for (input_idx, chr) in s.into_iter().enumerate() {
             match chr {
                 '1'..='9' => {
                     let value = chr.to_digit(10).unwrap() as usize;
-                    if !board.legal_at_index(i, value) {
-                        let (r, c, _) = index_to_row_column_block(i);
+                    if !board.legal_at_index(board_idx, value) {
+                        let (r, c, _) = index_to_row_column_block(board_idx);
                         return Err(format!("Illegal value {value} at row {}, column {}", r + 1, c + 1));
                     }
-                    board.set_at_index(i, value);
+                    board.set_at_index(board_idx, value);
+                    board_idx += 1;
                 },
-                '.' | ' ' => {}
-                _ => return Err(format!("Illegal char '{chr}' at index {i}")),
+                '.' | ' ' => {
+                    // empty cell
+                    board_idx += 1;
+                },
+                '\n' | '|' | '-' => {
+                    // ignore
+                }
+                _ => return Err(format!("Illegal char '{chr}' at index {input_idx}")),
             }
+        }
+        if board_idx != 81 {
+            return Err(format!("Expected 81 cells, got {board_idx}"));
         }
         Ok(board)
     }
@@ -141,33 +149,19 @@ impl fmt::Display for Board {
 }
 
 fn main() {
-    // Arto Inkala (https://abcnews.go.com/blogs/headlines/2012/06/can-you-solve-the-hardest-ever-sudoku)
-    // let board_setup = "\
-    //     8........\
-    //     ..36.....\
-    //     .7..9.2..\
-    //     .5...7...\
-    //     ....457..\
-    //     ...1...3.\
-    //     ..1....68\
-    //     ..85...1.\
-    //     .9....4..\
-    // ";
-    let board_setup = "\
-        29.....87\
-        ....8....\
-        ..527..41\
-        ...9..1.6\
-        ..1...9..\
-        9.4..6...\
-        76..384..\
-        ....9....\
-        31.....98\
-    ";
-    let mut board = Board::parse(board_setup).expect("Failed to parse");
-    println!("{}", board);
-    board.show_masks();
+    let mut input = Vec::new();
+    let stream = std::io::stdin();
+    let mut handle = stream.lock();
+    handle.read_to_end(&mut input).expect("Failed to read stdin");
+    let input = String::from_utf8(input).expect("Failed to parse input as utf8");
 
-    board.search_solution();
-    println!("\nBoards seen: {}", board.get_boards_seen());
+    match Board::parse(input.chars()) {
+        Ok(mut board) => {
+            println!("{}", board);
+            board.show_masks();
+            board.search_solution();
+            println!("\nBoards seen: {}", board.get_boards_seen());
+        },
+        Err(err) => println!("Error: {}", err),
+    }
 }
