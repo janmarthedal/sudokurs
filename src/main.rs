@@ -9,15 +9,15 @@ struct Board {
     cells: [CellValue; 81],
     column_set: [BitSet; 9],
     row_set: [BitSet; 9],
-    group_set: [BitSet; 9],
+    block_set: [BitSet; 9],
     boards_seen: usize,
 }
 
-fn index_to_row_column_group(index: usize) -> (usize, usize, usize) {
+fn index_to_row_column_block(index: usize) -> (usize, usize, usize) {
     let row = index / 9;
     let col = index % 9;
-    let group = (row / 3) * 3 + (col / 3);
-    (row, col, group)
+    let block = (row / 3) * 3 + (col / 3);
+    (row, col, block)
 }
 
 impl Board {
@@ -30,36 +30,36 @@ impl Board {
             cells: [0; 81],
             column_set: [all; 9],
             row_set: [all; 9],
-            group_set: [all; 9],
+            block_set: [all; 9],
             boards_seen: 0,
         }
     }
     fn legal_at_index(&self, index: usize, value: CellValue) -> bool {
-        let (r, c, g) = index_to_row_column_group(index);
-        self.row_set[r].contains(value) && self.column_set[c].contains(value) && self.group_set[g].contains(value)
+        let (r, c, g) = index_to_row_column_block(index);
+        self.row_set[r].contains(value) && self.column_set[c].contains(value) && self.block_set[g].contains(value)
     }
     fn set_at_index(&mut self, index: usize, value: CellValue) {
         self.cells[index] = value;
-        let (r, c, g) = index_to_row_column_group(index);
+        let (r, c, g) = index_to_row_column_block(index);
         self.row_set[r].remove(value);
         self.column_set[c].remove(value);
-        self.group_set[g].remove(value);
+        self.block_set[g].remove(value);
     }
     fn clear_at_index(&mut self, index: usize) {
         let value = self.cells[index];
         self.cells[index] = 0;
-        let (r, c, g) = index_to_row_column_group(index);
+        let (r, c, g) = index_to_row_column_block(index);
         self.row_set[r].insert(value);
         self.column_set[c].insert(value);
-        self.group_set[g].insert(value);
+        self.block_set[g].insert(value);
     }
     fn search_solution(&mut self) {
         self.boards_seen += 1;
         // index, count, mask
         let mut best: Option<(usize, usize, BitSet)> = None;
         for (index, _) in self.cells.iter().enumerate().filter(|(_, &v)| v == 0) {
-            let (r, c, g) = index_to_row_column_group(index);
-            let moves = self.row_set[r].intersection(self.column_set[c]).intersection(self.group_set[g]);
+            let (r, c, g) = index_to_row_column_block(index);
+            let moves = self.row_set[r].intersection(self.column_set[c]).intersection(self.block_set[g]);
             let count = moves.count();
             if count == 0 {
                 // no solutions
@@ -83,7 +83,7 @@ impl Board {
     fn show_masks(&self) {
         println!("Row masks   : {:?}", self.row_set);
         println!("Column masks: {:?}", self.column_set);
-        println!("Group masks : {:?}", self.group_set);
+        println!("Block masks : {:?}", self.block_set);
     }
     fn get_boards_seen(&self) -> usize {
         self.boards_seen
@@ -98,7 +98,7 @@ impl Board {
                 '1'..='9' => {
                     let value = chr.to_digit(10).unwrap() as usize;
                     if !board.legal_at_index(i, value) {
-                        let (r, c, _) = index_to_row_column_group(i);
+                        let (r, c, _) = index_to_row_column_block(i);
                         return Err(format!("Illegal value {value} at row {}, column {}", r + 1, c + 1));
                     }
                     board.set_at_index(i, value);
