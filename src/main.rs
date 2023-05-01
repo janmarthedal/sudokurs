@@ -34,10 +34,12 @@ impl Board {
             boards_seen: 0,
         }
     }
+
     fn legal_at_index(&self, index: usize, value: CellValue) -> bool {
         let (r, c, g) = index_to_row_column_block(index);
         self.row_set[r].contains(value) && self.column_set[c].contains(value) && self.block_set[g].contains(value)
     }
+
     fn set_at_index(&mut self, index: usize, value: CellValue) {
         self.cells[index] = value;
         let (r, c, g) = index_to_row_column_block(index);
@@ -45,6 +47,7 @@ impl Board {
         self.column_set[c].remove(value);
         self.block_set[g].remove(value);
     }
+
     fn clear_at_index(&mut self, index: usize) {
         let value = self.cells[index];
         self.cells[index] = 0;
@@ -53,6 +56,7 @@ impl Board {
         self.column_set[c].insert(value);
         self.block_set[g].insert(value);
     }
+
     fn search_solution(&mut self) {
         self.boards_seen += 1;
         // index, count, mask
@@ -80,14 +84,17 @@ impl Board {
             println!("\nSolution:\n{self}");
         }
     }
+
     fn show_masks(&self) {
         println!("Row masks   : {:?}", self.row_set);
         println!("Column masks: {:?}", self.column_set);
         println!("Block masks : {:?}", self.block_set);
     }
+
     fn get_boards_seen(&self) -> usize {
         self.boards_seen
     }
+
     fn parse(s: &str) -> Result<Board, String> {
         if s.len() != 81 {
             return Err(format!("Expected 81 chars, got {}", s.len()));

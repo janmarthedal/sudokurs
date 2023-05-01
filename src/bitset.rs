@@ -13,7 +13,6 @@ pub trait BitStore:
     + std::ops::Not<Output = Self>
     + std::ops::ShrAssign<usize>
 {
-    // + std::ops::BitXor<Output = Self> + std::ops::Shr<usize, Output = Self> + std::ops::BitXorAssign + std::ops::ShlAssign<usize>
     fn count_ones(&self) -> u32;
     fn zero() -> Self;
     fn one() -> Self;
@@ -28,9 +27,11 @@ impl BitStore for usize {
     fn count_ones(&self) -> u32 {
         (*self as usize).count_ones()
     }
+
     fn zero() -> Self {
         0
     }
+
     fn one() -> Self {
         1
     }
@@ -40,23 +41,29 @@ impl<T: BitStore> BitSet<T> {
     pub fn new() -> Self {
         Self { bits: T::zero() }
     }
+
     pub fn count(&self) -> usize {
         self.bits.count_ones() as usize
     }
+
     pub fn contains(&self, value: usize) -> bool {
         self.bits & (T::one() << value) != T::zero()
     }
+
     pub fn insert(&mut self, value: usize) {
         self.bits |= T::one() << value;
     }
+
     pub fn remove(&mut self, value: usize) {
         self.bits &= !(T::one() << value);
     }
+
     pub fn intersection(&self, other: Self) -> Self {
         Self {
             bits: self.bits & other.bits,
         }
     }
+
     pub fn iter(&self) -> Iter<T> {
         Iter {
             bits: self.bits,
