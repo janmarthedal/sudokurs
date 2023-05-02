@@ -86,9 +86,9 @@ impl Board {
     }
 
     fn show_masks(&self) {
-        println!("Row masks   : {:?}", self.row_set);
-        println!("Column masks: {:?}", self.column_set);
-        println!("Block masks : {:?}", self.block_set);
+        println!("Row sets   : {:?}", self.row_set);
+        println!("Column sets: {:?}", self.column_set);
+        println!("Block sets : {:?}", self.block_set);
     }
 
     fn get_boards_seen(&self) -> usize {
